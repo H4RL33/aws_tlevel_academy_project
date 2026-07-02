@@ -1,6 +1,15 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+# Defined here (rather than in chat_service, which imports several schemas
+# from this module) so both chat_service and ChatSessionRenameRequest below
+# can share one constant without introducing a circular import.
+TITLE_MAX_LEN = 60
+
+
+class ChatSessionRenameRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=TITLE_MAX_LEN)
 
 
 class ChatSessionSummary(BaseModel):

@@ -56,3 +56,61 @@ async def test_post_chat_message_streams_sse_and_persists(
 async def test_old_mentor_endpoint_is_removed(authenticated_client: AsyncClient) -> None:
     resp = await authenticated_client.post("/library/mentor", json={"message": "hi"})
     assert resp.status_code == 404
+
+
+async def test_rename_chat_session(authenticated_client: AsyncClient) -> None:
+    create_resp = await authenticated_client.post("/library/chats")
+    session_id = create_resp.json()["id"]
+
+    rename_resp = await authenticated_client.patch(
+        f"/library/chats/{session_id}", json={"title": "Renamed chat"}
+    )
+    assert rename_resp.status_code == 200
+    assert rename_resp.json()["title"] == "Renamed chat"
+
+    get_resp = await authenticated_client.get(f"/library/chats/{session_id}")
+    assert get_resp.json()["title"] == "Renamed chat"
+
+
+async def test_rename_chat_session_404_for_nonexistent(authenticated_client: AsyncClient) -> None:
+    resp = await authenticated_client.patch("/library/chats/999999", json={"title": "Renamed chat"})
+    assert resp.status_code == 404
+
+
+async def test_rename_chat_session_rejects_empty_title(authenticated_client: AsyncClient) -> None:
+    create_resp = await authenticated_client.post("/library/chats")
+    session_id = create_resp.json()["id"]
+
+    resp = await authenticated_client.patch(f"/library/chats/{session_id}", json={"title": ""})
+    assert resp.status_code == 422
+
+
+async def test_rename_chat_session_rejects_overlong_title(
+    authenticated_client: AsyncClient,
+) -> None:
+    create_resp = await authenticated_client.post("/library/chats")
+    session_id = create_resp.json()["id"]
+
+    resp = await authenticated_client.patch(
+        f"/library/chats/{session_id}", json={"title": "x" * 100}
+    )
+    assert resp.status_code == 422
+
+
+async def test_delete_chat_session(authenticated_client: AsyncClient) -> None:
+    create_resp = await authenticated_client.post("/library/chats")
+    session_id = create_resp.json()["id"]
+
+    delete_resp = await authenticated_client.delete(f"/library/chats/{session_id}")
+    assert delete_resp.status_code == 204
+
+    get_resp = await authenticated_client.get(f"/library/chats/{session_id}")
+    assert get_resp.status_code == 404
+
+    list_resp = await authenticated_client.get("/library/chats")
+    assert all(s["id"] != session_id for s in list_resp.json())
+
+
+async def test_delete_chat_session_404_for_nonexistent(authenticated_client: AsyncClient) -> None:
+    resp = await authenticated_client.delete("/library/chats/999999")
+    assert resp.status_code == 404

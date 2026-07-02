@@ -6,6 +6,8 @@ from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
 from app.models.content import Content, ContentTag
+from app.models.progress import UserContentProgress
+from app.models.user import User
 from app.schemas.content import ContentDetailResponse, ContentListResponse, TagResponse
 
 
@@ -24,7 +26,9 @@ async def list_content(
     raise NotImplementedError
 
 
-async def get_content(db: AsyncSession, content_id: int) -> ContentDetailResponse:
+async def get_content(
+    db: AsyncSession, content_id: int, user: User | None = None
+) -> ContentDetailResponse:
     """
     Return a single Content item including body (Markdown) and a fresh
     pre-signed S3 URL in the media_url field (generated via get_presigned_url).
@@ -41,6 +45,11 @@ async def get_content(db: AsyncSession, content_id: int) -> ContentDetailRespons
 
     media_url = await get_presigned_url(content.media_url) if content.media_url else None
 
+    is_completed = False
+    if user is not None:
+        progress_row = await db.get(UserContentProgress, (user.id, content_id))
+        is_completed = progress_row is not None and progress_row.progress_pct == 100
+
     return ContentDetailResponse(
         id=content.id,
         title=content.title,
@@ -51,6 +60,7 @@ async def get_content(db: AsyncSession, content_id: int) -> ContentDetailRespons
         created_at=content.created_at,
         body=content.body,
         media_url=media_url,
+        is_completed=is_completed,
     )
 
 

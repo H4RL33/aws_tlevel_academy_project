@@ -7,9 +7,9 @@
   import SnippetCard from '$lib/components/SnippetCard.svelte';
   import AgentChatWindow from '$lib/components/AgentChatWindow.svelte';
   import Button from '$lib/components/Button.svelte';
-  import NavLink from '$lib/components/NavLink.svelte';
+  import ChatSessionMenu from '$lib/components/ChatSessionMenu.svelte';
   import { createChatSession, getChatSession, sendChatMessage } from '$lib/api/chat';
-  import type { ChatSessionSummary, ChatSessionDetail } from '$lib/api/chat';
+  import type { ChatSessionSummary, ChatSessionDetail, ChatMessageRecord } from '$lib/api/chat';
   import { saveSnippet, unsaveSnippet } from '$lib/api/library';
   import { currentUser } from '$lib/stores/user';
   import { enrolledAlbumIds } from '$lib/stores/enrolments';
@@ -42,6 +42,21 @@
     }
   }
 
+  function handleSessionRenamed(updated: ChatSessionSummary) {
+    sessions = sessions.map((s) => (s.id === updated.id ? updated : s));
+    if (activeSession?.id === updated.id) {
+      activeSession = { ...activeSession, title: updated.title };
+    }
+  }
+
+  function handleSessionDeleted(sessionId: number) {
+    sessions = sessions.filter((s) => s.id !== sessionId);
+    if (activeSession?.id === sessionId) {
+      activeSession = null;
+      goto('/library', { keepFocus: true, noScroll: true });
+    }
+  }
+
   async function handleNewChat() {
     chatError = null;
     try {
@@ -64,6 +79,22 @@
     chatError = null;
     isStreaming = true;
     streamingText = '';
+
+    // Optimistically show the user's own message immediately — otherwise it
+    // stays invisible until the mentor's entire reply has streamed in and
+    // getChatSession() re-fetches the real, persisted messages below. This
+    // synthetic record gets discarded (not appended to) the moment the real
+    // activeSession replaces it wholesale after the stream completes.
+    const optimisticId = -Date.now();
+    const optimisticMessage: ChatMessageRecord = {
+      id: optimisticId,
+      role: 'user',
+      text,
+      sources: null,
+      created_at: new Date().toISOString(),
+    };
+    activeSession = { ...activeSession, messages: [...activeSession.messages, optimisticMessage] };
+
     try {
       await sendChatMessage(sessionId, text, (delta) => {
         streamingText = (streamingText ?? '') + delta;
@@ -79,6 +110,13 @@
     } catch (err) {
       chatError = "Couldn't send that message — please try again.";
       console.error(err);
+      // Roll back the optimistic message — it was never actually sent/persisted.
+      if (activeSession) {
+        activeSession = {
+          ...activeSession,
+          messages: activeSession.messages.filter((m) => m.id !== optimisticId),
+        };
+      }
     } finally {
       isStreaming = false;
       streamingText = undefined;
@@ -123,15 +161,14 @@
       <ul class="session-list">
         {#each sessions as session (session.id)}
           <li>
-            <NavLink
+            <ChatSessionMenu
+              {session}
               href={`/library?session=${session.id}`}
-              label={session.title}
               active={activeSession?.id === session.id}
               muted={activeSession?.id !== session.id}
-              on:click={(e) => {
-                e.preventDefault();
-                selectSession(session.id);
-              }}
+              onSelect={() => selectSession(session.id)}
+              onRenamed={handleSessionRenamed}
+              onDeleted={handleSessionDeleted}
             />
           </li>
         {/each}
@@ -148,6 +185,7 @@
         messages={activeSession.messages}
         onSend={handleSend}
         userDisplayName={$currentUser?.first_name || $currentUser?.username || 'You'}
+        user={$currentUser}
         {streamingText}
         {isStreaming}
       />
@@ -212,7 +250,11 @@
   }
 
   .library-layout > :global(aside.page-card) {
-    flex: 1 1 var(--left-rail-width);
+    /* Fixed-width rail: flex-grow: 0 so it can't stretch to consume slack
+       space (and visibly change width) depending on how much room the other
+       flex siblings need for a given chat's content. min/max stay as a
+       safety clamp matching --left-rail-width's own clamp() bounds. */
+    flex: 0 0 var(--left-rail-width);
     min-width: 160px;
     max-width: 200px;
   }

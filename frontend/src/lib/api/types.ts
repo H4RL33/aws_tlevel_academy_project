@@ -53,6 +53,7 @@ export interface ContentListResponse {
 export interface ContentDetailResponse extends ContentListResponse {
   body: string | null;
   media_url: string | null;
+  is_completed: boolean;
 }
 
 export interface ProgressResponse {

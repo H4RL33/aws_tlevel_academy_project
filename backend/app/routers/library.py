@@ -8,7 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
-from app.schemas.chat import ChatMessageRequest, ChatSessionDetail, ChatSessionSummary
+from app.schemas.chat import (
+    ChatMessageRequest,
+    ChatSessionDetail,
+    ChatSessionRenameRequest,
+    ChatSessionSummary,
+)
 from app.schemas.library import ContentSearchResult, LibraryResponse
 from app.services import chat_service, library_service
 
@@ -66,6 +71,30 @@ async def get_chat(
 ) -> ChatSessionDetail:
     session = await chat_service.get_session_or_404(db, session_id, current_user)
     return await chat_service.get_session_detail(db, session)
+
+
+@router.patch(
+    "/chats/{session_id}", response_model=ChatSessionSummary, summary="Rename a chat session"
+)
+async def rename_chat(
+    session_id: int,
+    body: ChatSessionRenameRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ChatSessionSummary:
+    session = await chat_service.get_session_or_404(db, session_id, current_user)
+    session = await chat_service.rename_session(db, session, body.title)
+    return ChatSessionSummary.model_validate(session)
+
+
+@router.delete("/chats/{session_id}", status_code=204, summary="Delete a chat session")
+async def delete_chat(
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    session = await chat_service.get_session_or_404(db, session_id, current_user)
+    await chat_service.delete_session(db, session)
 
 
 @router.post("/chats/{session_id}/messages", summary="Send a message, stream the mentor's reply")
