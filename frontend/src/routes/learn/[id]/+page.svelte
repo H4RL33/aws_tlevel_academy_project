@@ -62,15 +62,22 @@
 
   async function markSnippetRead() {
     if (!snippet || snippetRead) return;
+    const targetId = snippet.id;
     markingRead = true;
     markReadError = null;
     try {
-      await updateProgress(snippet.id, 100);
-      snippetRead = true;
+      await updateProgress(targetId, 100);
+      if (snippet?.id === targetId) {
+        snippetRead = true;
+      }
     } catch {
-      markReadError = "Couldn't save your progress — please try again.";
+      if (snippet?.id === targetId) {
+        markReadError = "Couldn't save your progress — please try again.";
+      }
     } finally {
-      markingRead = false;
+      if (snippet?.id === targetId) {
+        markingRead = false;
+      }
     }
   }
 
@@ -82,10 +89,11 @@
     }
     snippetLoading = true;
     snippetError = null;
+    markingRead = false;
+    markReadError = null;
     try {
       snippet = await getContent(id);
       snippetRead = snippet.is_completed;
-      markReadError = null;
     } catch {
       snippetError = 'Could not load this Snippet right now. Please try again later.';
     } finally {
@@ -159,7 +167,7 @@
               {snippetRead ? '✓ Read' : markingRead ? 'Saving…' : 'Mark as read (+10 XP)'}
             </Button>
             {#if markReadError}
-              <span class="mark-read-error">{markReadError}</span>
+              <span class="mark-read-error" role="alert">{markReadError}</span>
             {/if}
           </div>
         {/if}
