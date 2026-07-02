@@ -1,4 +1,5 @@
 import json
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -10,6 +11,8 @@ from app.models.user import User
 from app.schemas.chat import ChatMessageRequest, ChatSessionDetail, ChatSessionSummary
 from app.schemas.library import ContentSearchResult, LibraryResponse
 from app.services import chat_service, library_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/library", tags=["library"])
 
@@ -91,6 +94,19 @@ async def post_chat_message(
                 yield f"data: {json.dumps({'delta': delta})}\n\n"
         except HTTPException as exc:
             yield f"data: {json.dumps({'error': exc.detail})}\n\n"
+            return
+        except Exception:
+            # Belt-and-braces: stream_mentor_reply converts the Bedrock error
+            # paths it knows about into HTTPException, but *any* other
+            # exception type reaching here would otherwise crash the SSE
+            # connection outright (Starlette can't attach CORS/error headers
+            # once the response has started streaming) — the browser then
+            # reports a bare NetworkError with no useful detail. Log it and
+            # degrade to an SSE error frame instead of a dead connection.
+            logger.exception(
+                "Unhandled error while streaming mentor reply for session %s", session_id
+            )
+            yield f"data: {json.dumps({'error': 'The mentor is temporarily unavailable'})}\n\n"
             return
         yield f"data: {json.dumps({'done': True})}\n\n"
 

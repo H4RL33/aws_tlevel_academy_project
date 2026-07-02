@@ -249,7 +249,7 @@
   }
 
   .message-text {
-    font-size: 0.875rem;
+    font-size: var(--font-size-body-secondary);
     line-height: 1.6;
     color: #232f3e;
     font-family: 'Ubuntu', sans-serif;

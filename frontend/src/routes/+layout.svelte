@@ -120,6 +120,30 @@
   :global(:root) {
     --gap-inner: 1.5rem;
     --gap-outer: 2.25rem;
+
+    /* Typography scale. NOTE: :global(html) below sets font-size: 14px, so
+       these rem values are NOT literal px (1rem here renders as 14px, not
+       16px) — they're kept in rem to match the app's existing sizing
+       convention (spacing, gaps, etc. are all rem-based against that same
+       14px root), so a component's rem values stay proportionate to the
+       rest of the UI as the base scales. Treat the numbers below as the
+       app's canonical type scale, not literal pixel values.
+       Body text. */
+    --font-size-body: 1rem;
+    --font-size-body-secondary: 0.875rem;
+    --line-height-body: 1.5;
+
+    /* Headings, largest to smallest. H1 sits near the top of the brand
+       heading range, H4 near the bottom. */
+    --font-size-h1: 2.25rem;
+    --font-size-h2: 1.75rem;
+    --font-size-h3: 1.375rem;
+    --font-size-h4: 1.125rem;
+    --line-height-heading: 1.2;
+
+    /* Comfortable line length for body-copy blocks (bios, article/snippet
+       content, forum posts): ~65-75 characters per line. */
+    --measure-body: 65ch;
   }
 
   .backdrop {

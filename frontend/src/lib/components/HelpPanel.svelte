@@ -57,13 +57,13 @@
 
   .faq-item h3 {
     color: #c9d1d9;
-    font-size: 1rem;
+    font-size: var(--font-size-h4);
     margin: 0 0 0.5rem;
   }
 
   .faq-item p {
     color: #8b949e;
-    font-size: 0.875rem;
+    font-size: var(--font-size-body-secondary);
     line-height: 1.6;
     margin: 0;
   }

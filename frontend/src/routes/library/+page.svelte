@@ -115,7 +115,7 @@
 </script>
 
 <div class="library-layout">
-  <PageCard as="aside" width="var(--rail-width)" padding="1rem" overflowY="auto">
+  <PageCard as="aside" width="var(--left-rail-width)" padding="1rem" overflowY="auto">
     <Button variant="cta" on:click={handleNewChat}>+ New chat</Button>
     {#if sessions.length === 0}
       <p class="empty">No chats yet — ask the Mentor something to start one.</p>
@@ -190,31 +190,40 @@
 </div>
 
 <style>
-  /* Both flanking columns share one derived width so they can't drift apart:
-     2 AlbumCards at AlbumGrid's max track width (220px, see
+  /* The right-hand stack's width is derived so it can't drift from its own
+     content: 2 AlbumCards at AlbumGrid's max track width (220px, see
      AlbumGrid.svelte's minmax(190px, 220px)) + one --gap-inner between them
-     + a 3rem buffer. The actual PageCards in this file use less padding
-     than 3rem (left rail: padding="1rem"; right-stack cards:
-     padding="1rem 1.25rem") — the 3rem figure is a deliberate slack margin,
-     not a literal padding sum, to leave room for scrollbars/content overflow. */
+     + a 3rem buffer. The right-stack PageCards use less padding than 3rem
+     (padding="1rem 1.25rem") — the 3rem figure is a deliberate slack margin,
+     not a literal padding sum, to leave room for scrollbars/content overflow.
+
+     The left rail only holds a list of chat-session nav links, so it gets
+     its own much narrower width budget instead of reusing the right
+     stack's — reusing it starved the middle chat column on narrower
+     viewports (e.g. ~1280px CSS px, as seen at 1080p with 150% Windows
+     display scaling). minmax-via-clamp lets it shrink first under pressure
+     while the chat column (flex: 1 1 auto) keeps size priority. */
   .library-layout {
-    --rail-width: calc(2 * 220px + var(--gap-inner) + 3rem);
+    --right-rail-width: calc(2 * 220px + var(--gap-inner) + 3rem);
+    --left-rail-width: clamp(160px, 16vw, 200px);
     display: flex;
     gap: var(--gap-inner);
     height: 100%;
   }
 
   .library-layout > :global(aside.page-card) {
-    flex: 0 0 var(--rail-width);
+    flex: 1 1 var(--left-rail-width);
+    min-width: 160px;
+    max-width: 200px;
   }
 
   .library-layout > :global(main.page-card) {
-    flex: 1 1 auto;
+    flex: 3 1 auto;
     min-width: 0;
   }
 
   .right-stack {
-    flex: 0 0 var(--rail-width);
+    flex: 0 0 var(--right-rail-width);
     display: flex;
     flex-direction: column;
     gap: var(--gap-inner);
@@ -242,10 +251,18 @@
     padding: 0.35rem 0.6rem;
   }
 
+  /* overflow/ellipsis must live on the inner .label span, not on the <a>
+     itself — NavLink's active/hover underline is an ::after pseudo-element
+     positioned at bottom: -0.3em (outside the anchor's own box), so
+     overflow: hidden on the <a> clips the underline away entirely. */
   .session-list :global(a) {
     display: block;
     width: 100%;
     font-size: 0.825rem;
+  }
+
+  .session-list :global(a .label) {
+    display: block;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

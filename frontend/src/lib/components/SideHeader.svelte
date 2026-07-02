@@ -50,7 +50,7 @@
   h4 {
     margin: 0.25rem 0 0.5rem;
     color: #232f3e;
-    font-size: 0.95rem;
+    font-size: var(--font-size-h4);
     font-weight: 600;
   }
 

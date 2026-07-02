@@ -169,7 +169,7 @@
   }
 
   .title {
-    font-size: 0.85rem;
+    font-size: var(--font-size-body-secondary);
     font-weight: 600;
     text-align: center;
     color: #232f3e;

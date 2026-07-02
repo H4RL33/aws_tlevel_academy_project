@@ -247,7 +247,7 @@
   }
 
   .forum-header-left h2 {
-    font-size: 0.95rem;
+    font-size: var(--font-size-h4);
     font-weight: 700;
     color: #232f3e;
     margin: 0;
@@ -282,21 +282,21 @@
   }
 
   .hero h1 {
-    /* Largest heading in the app (previous largest was 2.25rem, the next
-       size down in this app's ad-hoc rem scale); this is the guest
-       homepage's primary hero, so it should read as the most prominent
-       text on the page. */
-    font-size: 3rem;
+    /* Largest heading in the app, at the top of the brand heading scale
+       (--font-size-h1, 2.25rem) — this is the guest homepage's primary
+       hero, so it should read as the most prominent text on the page
+       while staying within the 18-36px heading range. */
+    font-size: var(--font-size-h1);
     font-weight: 800;
     color: #232f3e;
-    line-height: 1.2;
+    line-height: var(--line-height-heading);
     max-width: 620px;
     margin: 0;
     font-family: 'Ubuntu', sans-serif;
   }
 
   .hero p {
-    font-size: 1rem;
+    font-size: var(--font-size-body);
     color: #5a6472;
     max-width: 520px;
     line-height: 1.6;
@@ -330,7 +330,7 @@
   }
 
   .section-header h2 {
-    font-size: 0.95rem;
+    font-size: var(--font-size-h4);
     font-weight: 700;
     color: #232f3e;
     margin: 0;

@@ -240,7 +240,7 @@
   h3 {
     margin: 0;
     color: #232f3e;
-    font-size: 0.95rem;
+    font-size: var(--font-size-h4);
     font-weight: 700;
     text-align: center;
     font-family: 'Ubuntu', sans-serif;

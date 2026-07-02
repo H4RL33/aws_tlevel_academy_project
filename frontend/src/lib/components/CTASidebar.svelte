@@ -167,7 +167,7 @@
   }
 
   .greeting {
-    font-size: 1rem;
+    font-size: var(--font-size-body);
     font-weight: 700;
     color: #232f3e;
     margin: 0;
@@ -215,7 +215,7 @@
   }
 
   .empty-text {
-    font-size: 0.875rem;
+    font-size: var(--font-size-body-secondary);
     color: #5a6472;
     margin: 0;
     font-family: 'Ubuntu', sans-serif;

@@ -63,7 +63,7 @@
   /* Album title styling */
   h2 {
     margin: 0;
-    font-size: 1rem;
+    font-size: var(--font-size-h4);
     font-weight: 600;
     color: white;
   }
