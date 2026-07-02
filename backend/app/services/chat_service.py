@@ -11,13 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.models.library import ChatMessage, ChatSession
 from app.models.user import User
-from app.schemas.chat import ChatMessageRecord, ChatMessageSource, ChatSessionDetail
+from app.schemas.chat import TITLE_MAX_LEN, ChatMessageRecord, ChatMessageSource, ChatSessionDetail
 from app.services.embedding_service import embed_text, get_bedrock_client
 from app.services.library_service import _fetch_mentor_context
 
 logger = logging.getLogger(__name__)
-
-TITLE_MAX_LEN = 60
 
 
 def _derive_title(first_message: str) -> str:
@@ -52,6 +50,19 @@ async def get_session_or_404(db: AsyncSession, session_id: int, user: User) -> C
         # id exists at all if it isn't theirs.
         raise HTTPException(status_code=404, detail="Chat session not found")
     return session
+
+
+async def rename_session(db: AsyncSession, session: ChatSession, new_title: str) -> ChatSession:
+    trimmed = new_title.strip()
+    session.title = trimmed[:TITLE_MAX_LEN] or "New chat"
+    await db.commit()
+    await db.refresh(session)
+    return session
+
+
+async def delete_session(db: AsyncSession, session: ChatSession) -> None:
+    await db.delete(session)
+    await db.commit()
 
 
 async def _get_messages(db: AsyncSession, session_id: int) -> list[ChatMessage]:

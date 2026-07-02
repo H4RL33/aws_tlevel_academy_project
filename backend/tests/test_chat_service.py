@@ -54,6 +54,58 @@ async def test_list_sessions_returns_only_current_users_sessions_newest_first(
     assert [s.title for s in sessions] == ["Second", "First"]
 
 
+async def test_rename_session_updates_title(
+    db_session: AsyncSession, current_user: User
+) -> None:
+    from app.services.chat_service import create_session, rename_session
+
+    session = await create_session(db_session, current_user)
+
+    renamed = await rename_session(db_session, session, "My renamed chat")
+
+    assert renamed.title == "My renamed chat"
+    await db_session.refresh(session)
+    assert session.title == "My renamed chat"
+
+
+async def test_rename_session_trims_and_truncates_to_title_max_len(
+    db_session: AsyncSession, current_user: User
+) -> None:
+    from app.services.chat_service import TITLE_MAX_LEN, create_session, rename_session
+
+    session = await create_session(db_session, current_user)
+
+    renamed = await rename_session(db_session, session, "  " + "x" * 100 + "  ")
+
+    assert renamed.title == "x" * TITLE_MAX_LEN
+    assert len(renamed.title) == TITLE_MAX_LEN
+
+
+async def test_delete_session_removes_session_and_messages(
+    db_session: AsyncSession, current_user: User
+) -> None:
+    from sqlalchemy import select
+
+    from app.models.library import ChatMessage, ChatSession
+    from app.services.chat_service import create_session, delete_session
+
+    session = await create_session(db_session, current_user)
+    db_session.add(ChatMessage(session_id=session.id, role="user", text="Hi"))
+    await db_session.commit()
+
+    await delete_session(db_session, session)
+
+    remaining_sessions = (
+        await db_session.execute(select(ChatSession).where(ChatSession.id == session.id))
+    ).scalar_one_or_none()
+    remaining_messages = (
+        await db_session.execute(select(ChatMessage).where(ChatMessage.session_id == session.id))
+    ).scalars().all()
+
+    assert remaining_sessions is None
+    assert remaining_messages == []
+
+
 async def test_get_session_or_404_raises_for_other_users_session(
     db_session: AsyncSession, current_user: User
 ) -> None:

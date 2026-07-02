@@ -37,6 +37,20 @@ export async function getChatSession(sessionId: number): Promise<ChatSessionDeta
   return apiFetch<ChatSessionDetail>(`/library/chats/${sessionId}`);
 }
 
+export async function renameChatSession(
+  sessionId: number,
+  title: string
+): Promise<ChatSessionSummary> {
+  return apiFetch<ChatSessionSummary>(`/library/chats/${sessionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ title }),
+  });
+}
+
+export async function deleteChatSession(sessionId: number): Promise<void> {
+  await apiFetch<void>(`/library/chats/${sessionId}`, { method: 'DELETE' });
+}
+
 export interface SendChatMessageResult {
   messageId: number;
 }

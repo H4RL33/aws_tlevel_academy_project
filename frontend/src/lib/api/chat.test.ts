@@ -1,6 +1,13 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { TOKEN_KEY, ApiError } from './client';
-import { listChatSessions, createChatSession, getChatSession, sendChatMessage } from './chat';
+import {
+  listChatSessions,
+  createChatSession,
+  getChatSession,
+  renameChatSession,
+  deleteChatSession,
+  sendChatMessage,
+} from './chat';
 
 describe('chat api client', () => {
   afterEach(() => {
@@ -69,6 +76,45 @@ describe('chat api client', () => {
     expect(result).toEqual(mockDetail);
     const [url] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(url).toContain('/library/chats/3');
+  });
+
+  it('renameChatSession PATCHes /library/chats/:id with the new title', async () => {
+    localStorage.clear();
+    localStorage.setItem(TOKEN_KEY, 'test-token');
+    const mockSession = { id: 3, title: 'Renamed', updated_at: '2026-07-01T00:00:00Z' };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => mockSession,
+      })
+    );
+
+    const result = await renameChatSession(3, 'Renamed');
+
+    expect(result).toEqual(mockSession);
+    const [url, init] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain('/library/chats/3');
+    expect(init.method).toBe('PATCH');
+    expect(JSON.parse(init.body as string)).toEqual({ title: 'Renamed' });
+  });
+
+  it('deleteChatSession DELETEs /library/chats/:id', async () => {
+    localStorage.clear();
+    localStorage.setItem(TOKEN_KEY, 'test-token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => null,
+      })
+    );
+
+    await deleteChatSession(3);
+
+    const [url, init] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain('/library/chats/3');
+    expect(init.method).toBe('DELETE');
   });
 
   it('sendChatMessage streams SSE chunks and calls onDelta for each one', async () => {
