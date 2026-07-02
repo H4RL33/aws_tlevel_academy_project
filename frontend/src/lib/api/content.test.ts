@@ -18,6 +18,7 @@ describe('getContent', () => {
       created_at: '2026-06-25T00:00:00Z',
       body: 'Cloud computing means renting computing power...',
       media_url: null,
+      is_completed: false,
     };
     const mockFetch = vi
       .fn()
