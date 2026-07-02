@@ -162,7 +162,7 @@
     {:else if albumError}
       <p class="error">{albumError}</p>
     {:else}
-      <AlbumGrid {albums} />
+      <AlbumGrid {albums} layout="row" />
     {/if}
   </PageCard>
 {/if}
@@ -282,7 +282,11 @@
   }
 
   .hero h1 {
-    font-size: 2.25rem;
+    /* Largest heading in the app (previous largest was 2.25rem, the next
+       size down in this app's ad-hoc rem scale); this is the guest
+       homepage's primary hero, so it should read as the most prominent
+       text on the page. */
+    font-size: 3rem;
     font-weight: 800;
     color: #232f3e;
     line-height: 1.2;

@@ -41,7 +41,10 @@ export interface SendChatMessageResult {
   messageId: number;
 }
 
-type ChatStreamPayload = { delta: string } | { done: true; message_id?: number };
+type ChatStreamPayload =
+  | { delta: string }
+  | { done: true; message_id?: number }
+  | { error: string };
 
 /**
  * Streams a mentor reply via SSE. Deliberately does NOT use the native
@@ -94,7 +97,14 @@ export async function sendChatMessage(
         } catch {
           throw new ApiError(response.status, `Request to ${path} received a malformed SSE frame`);
         }
-        if ('done' in payload && payload.done) {
+        if ('error' in payload) {
+          // The backend can only surface a mentor-side failure (e.g. Bedrock
+          // unreachable) as an SSE frame — by the time it knows, the 200
+          // response has already started, so this can't come back as an
+          // HTTP error status. Turn it into an ApiError so callers' existing
+          // catch blocks handle it the same way as any other failed request.
+          throw new ApiError(response.status, payload.error);
+        } else if ('done' in payload && payload.done) {
           messageId = payload.message_id ?? null;
         } else if ('delta' in payload && typeof payload.delta === 'string') {
           onDelta(payload.delta);

@@ -8,7 +8,7 @@
   export let muted = false;
 </script>
 
-<a {href} class:muted class:active>{label}</a>
+<a {href} class:muted class:active on:click>{label}</a>
 
 <style>
   a {
