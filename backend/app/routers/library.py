@@ -1,6 +1,6 @@
 import json
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -75,10 +75,23 @@ async def post_chat_message(
     session = await chat_service.get_session_or_404(db, session_id, current_user)
 
     async def event_generator():
-        async for delta in chat_service.stream_mentor_reply(
-            db, session, body.message, current_user
-        ):
-            yield f"data: {json.dumps({'delta': delta})}\n\n"
+        # StreamingResponse sends the 200 status + headers as soon as this
+        # generator starts running, so an HTTPException raised anywhere inside
+        # stream_mentor_reply (e.g. embed_text failing because Bedrock is
+        # unreachable/uncredentialled) can no longer become a normal HTTP error
+        # response — Starlette would just abort the connection with
+        # "Caught handled exception, but response already started." Catch it
+        # here and surface it as an SSE error frame instead so the frontend
+        # can show the student a real message rather than a silently-dropped
+        # reply or a broken connection.
+        try:
+            async for delta in chat_service.stream_mentor_reply(
+                db, session, body.message, current_user
+            ):
+                yield f"data: {json.dumps({'delta': delta})}\n\n"
+        except HTTPException as exc:
+            yield f"data: {json.dumps({'error': exc.detail})}\n\n"
+            return
         yield f"data: {json.dumps({'done': True})}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")

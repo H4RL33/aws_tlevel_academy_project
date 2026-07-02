@@ -6,6 +6,8 @@
   import AlbumCard from '$lib/components/AlbumCard.svelte';
   import SnippetCard from '$lib/components/SnippetCard.svelte';
   import AgentChatWindow from '$lib/components/AgentChatWindow.svelte';
+  import Button from '$lib/components/Button.svelte';
+  import NavLink from '$lib/components/NavLink.svelte';
   import { createChatSession, getChatSession, sendChatMessage } from '$lib/api/chat';
   import type { ChatSessionSummary, ChatSessionDetail } from '$lib/api/chat';
   import { saveSnippet, unsaveSnippet } from '$lib/api/library';
@@ -114,20 +116,23 @@
 
 <div class="library-layout">
   <PageCard as="aside" width="var(--rail-width)" padding="1rem" overflowY="auto">
-    <button class="new-chat-btn" on:click={handleNewChat}>+ New chat</button>
+    <Button variant="cta" on:click={handleNewChat}>+ New chat</Button>
     {#if sessions.length === 0}
       <p class="empty">No chats yet — ask the Mentor something to start one.</p>
     {:else}
       <ul class="session-list">
         {#each sessions as session (session.id)}
           <li>
-            <button
-              class="session-item"
-              class:active={activeSession?.id === session.id}
-              on:click={() => selectSession(session.id)}
-            >
-              {session.title}
-            </button>
+            <NavLink
+              href={`/library?session=${session.id}`}
+              label={session.title}
+              active={activeSession?.id === session.id}
+              muted={activeSession?.id !== session.id}
+              on:click={(e) => {
+                e.preventDefault();
+                selectSession(session.id);
+              }}
+            />
           </li>
         {/each}
       </ul>
@@ -220,47 +225,30 @@
     min-height: 0;
   }
 
-  .new-chat-btn {
+  .library-layout :global(aside.page-card > button.cta) {
     width: 100%;
-    padding: 0.6rem;
-    margin-bottom: 0.75rem;
-    background: #232f3e;
-    color: white;
-    border: none;
-    cursor: pointer;
-    font-family: 'Ubuntu', sans-serif;
-    font-size: 0.85rem;
-    font-weight: 600;
   }
 
   .session-list {
     list-style: none;
-    margin: 0;
+    margin: 0.75rem 0 0;
     padding: 0;
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
   }
 
-  .session-item {
+  .session-list li {
+    padding: 0.35rem 0.6rem;
+  }
+
+  .session-list :global(a) {
+    display: block;
     width: 100%;
-    text-align: left;
-    background: none;
-    border: none;
-    padding: 0.5rem 0.6rem;
-    cursor: pointer;
-    font-family: 'Ubuntu', sans-serif;
     font-size: 0.825rem;
-    color: #5a6472;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-
-  .session-item.active {
-    color: #232f3e;
-    font-weight: 700;
-    background: rgba(35, 47, 62, 0.06);
   }
 
   .section-label {
@@ -281,8 +269,8 @@
   }
 
   .snippet-list {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 0.6rem;
   }
 

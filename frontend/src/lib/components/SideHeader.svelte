@@ -28,6 +28,17 @@
     margin: 1rem 0 0.5rem;
   }
 
+  /* The first SideHeader in the sidebar sits directly on Sidebar's own
+     1.5rem padding-top (no preceding section to separate from), so it only
+     needs half the normal top margin: 1.5rem + 0.5rem = 2rem, matching the
+     main PageCard's default 2rem top padding. This keeps the sidebar's
+     first visible content flush with the main content's top edge (e.g.
+     AlbumSidebar next to the Album/Snippet PageCard on /learn/[id])
+     instead of sitting 0.5rem lower than it. */
+  .side-header:first-child {
+    margin-top: 0.5rem;
+  }
+
   .label {
     display: block;
     font-size: 0.7rem;
