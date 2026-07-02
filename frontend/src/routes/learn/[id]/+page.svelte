@@ -163,7 +163,11 @@
         <p>{snippet.body}</p>
         {#if $currentUser}
           <div class="mark-read-row">
-            <Button variant="primary" disabled={snippetRead || markingRead} on:click={markSnippetRead}>
+            <Button
+              variant="primary"
+              disabled={snippetRead || markingRead}
+              on:click={markSnippetRead}
+            >
               {snippetRead ? '✓ Read' : markingRead ? 'Saving…' : 'Mark as read (+10 XP)'}
             </Button>
             {#if markReadError}
