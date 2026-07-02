@@ -230,6 +230,93 @@ async def test_stream_mentor_reply_persists_partial_text_on_mid_stream_failure(
     assert messages[1].text == "Partial answer."
 
 
+async def test_stream_mentor_reply_raises_http_503_when_invoke_call_itself_fails(
+    db_session: AsyncSession, current_user: User
+) -> None:
+    """
+    invoke_model_with_response_stream (opening the stream) can raise a
+    botocore ClientError directly -- e.g. throttling, an invalid model id, or
+    an IAM permissions error -- distinct from the stream failing mid-iteration.
+    Regression test for the production bug where this propagated as a raw
+    ClientError instead of the HTTPException the router's SSE generator
+    knows how to convert into an error frame, crashing the connection.
+    """
+    from unittest.mock import patch
+
+    from botocore.exceptions import ClientError
+    from fastapi import HTTPException
+
+    from app.services.chat_service import create_session, stream_mentor_reply
+
+    session = await create_session(db_session, current_user)
+
+    def raise_client_error(*args, **kwargs):
+        raise ClientError(
+            {"Error": {"Code": "ThrottlingException", "Message": "Rate exceeded"}},
+            "InvokeModelWithResponseStream",
+        )
+
+    with (
+        patch("app.services.chat_service.embed_text", return_value=[0.1] * 1024),
+        patch("app.services.chat_service._fetch_mentor_context", return_value=[]),
+        patch("app.services.chat_service.get_bedrock_client") as mock_get_client,
+    ):
+        mock_get_client.return_value.invoke_model_with_response_stream.side_effect = (
+            raise_client_error
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            async for _ in stream_mentor_reply(db_session, session, "Hi", current_user):
+                pass
+
+    assert exc_info.value.status_code == 503
+
+
+async def test_stream_mentor_reply_raises_http_503_on_mid_stream_client_error(
+    db_session: AsyncSession, current_user: User
+) -> None:
+    """
+    A botocore ClientError raised while iterating the response stream (e.g.
+    the connection drops partway through generation) must also become an
+    HTTPException, not propagate raw -- same production bug as above, but
+    for the mid-stream failure path rather than the initial call.
+    """
+    from unittest.mock import patch
+
+    from botocore.exceptions import ClientError
+    from fastapi import HTTPException
+
+    from app.services.chat_service import create_session, stream_mentor_reply
+
+    session = await create_session(db_session, current_user)
+
+    def fake_event_stream():
+        yield {"chunk": {"bytes": b'{"contentBlockDelta": {"delta": {"text": "Partial "}}}'}}
+        raise ClientError(
+            {"Error": {"Code": "ModelStreamErrorException", "Message": "stream broke"}},
+            "InvokeModelWithResponseStream",
+        )
+
+    mock_stream_response = {"body": fake_event_stream()}
+
+    with (
+        patch("app.services.chat_service.embed_text", return_value=[0.1] * 1024),
+        patch("app.services.chat_service._fetch_mentor_context", return_value=[]),
+        patch("app.services.chat_service.get_bedrock_client") as mock_get_client,
+    ):
+        mock_get_client.return_value.invoke_model_with_response_stream.return_value = (
+            mock_stream_response
+        )
+
+        deltas = []
+        with pytest.raises(HTTPException) as exc_info:
+            async for delta in stream_mentor_reply(db_session, session, "Hi", current_user):
+                deltas.append(delta)
+
+    assert exc_info.value.status_code == 503
+    assert deltas == ["Partial "]
+
+
 async def test_stream_mentor_reply_persists_sources_from_mentor_context(
     db_session: AsyncSession, current_user: User
 ) -> None:

@@ -241,7 +241,7 @@
 
   h1 {
     margin: 0 0 0.75rem;
-    font-size: 1.25rem;
+    font-size: var(--font-size-h3);
     font-weight: 700;
     color: #232f3e;
     font-family: 'Ubuntu', sans-serif;
@@ -262,7 +262,7 @@
 
   label {
     font-family: 'Ubuntu', sans-serif;
-    font-size: 0.875rem;
+    font-size: var(--font-size-body-secondary);
     color: #232f3e;
   }
 
@@ -303,7 +303,7 @@
   }
 
   .status {
-    font-size: 0.875rem;
+    font-size: var(--font-size-body-secondary);
     color: #5a6472;
     margin: 0.75rem 0 0;
     min-height: 1.25em;
@@ -311,7 +311,7 @@
   }
 
   .error {
-    font-size: 0.875rem;
+    font-size: var(--font-size-body-secondary);
     color: #ef4444;
     margin: 0.5rem 0 0;
     font-family: 'Ubuntu', sans-serif;

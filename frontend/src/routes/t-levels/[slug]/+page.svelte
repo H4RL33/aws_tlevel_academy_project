@@ -137,7 +137,7 @@
   }
 
   .section-heading {
-    font-size: 0.95rem;
+    font-size: var(--font-size-h4);
     font-weight: 700;
     color: #232f3e;
     margin: 0;
@@ -145,7 +145,7 @@
   }
 
   .status {
-    font-size: 0.875rem;
+    font-size: var(--font-size-body-secondary);
     color: #5a6472;
     margin: 0;
     font-family: 'Ubuntu', sans-serif;

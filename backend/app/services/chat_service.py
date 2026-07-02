@@ -1,7 +1,9 @@
 import json
+import logging
 from collections.abc import AsyncIterator
 from typing import Any
 
+from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +14,8 @@ from app.models.user import User
 from app.schemas.chat import ChatMessageRecord, ChatMessageSource, ChatSessionDetail
 from app.services.embedding_service import embed_text, get_bedrock_client
 from app.services.library_service import _fetch_mentor_context
+
+logger = logging.getLogger(__name__)
 
 TITLE_MAX_LEN = 60
 
@@ -120,26 +124,48 @@ async def stream_mentor_reply(
     chunks: list[dict[str, Any]] = await _fetch_mentor_context(db, query_vec, user)
     prompt = _build_mentor_prompt(message, chunks)
 
-    response = get_bedrock_client().invoke_model_with_response_stream(
-        modelId=settings.BEDROCK_GENERATION_MODEL_ID,
-        body=json.dumps(
-            {
-                "messages": [{"role": "user", "content": [{"text": prompt}]}],
-                "inferenceConfig": {"maxTokens": 512, "temperature": 0.7, "topP": 0.9},
-            }
-        ),
-    )
+    # invoke_model_with_response_stream itself (a plain synchronous boto3 call
+    # that only opens the stream) and iterating the returned event stream can
+    # both raise botocore exceptions (ClientError for throttling/auth/model
+    # errors, BotoCoreError for connection issues) — neither is an
+    # HTTPException, so left uncaught they propagate out of this generator
+    # after the StreamingResponse has already started, which the router's
+    # `except HTTPException` guard does not catch. That crashes the
+    # connection mid-stream (surfaces to the browser as a network error, not
+    # a clean HTTP error). Convert them to HTTPException here so the router
+    # can still turn them into a normal SSE error frame.
+    try:
+        response = get_bedrock_client().invoke_model_with_response_stream(
+            modelId=settings.BEDROCK_GENERATION_MODEL_ID,
+            body=json.dumps(
+                {
+                    "messages": [{"role": "user", "content": [{"text": prompt}]}],
+                    "inferenceConfig": {"maxTokens": 512, "temperature": 0.7, "topP": 0.9},
+                }
+            ),
+        )
+    except (BotoCoreError, ClientError) as exc:
+        logger.warning("Bedrock invoke_model_with_response_stream failed: %s", exc)
+        raise HTTPException(
+            status_code=503, detail="The mentor is temporarily unavailable"
+        ) from exc
 
     full_text_parts: list[str] = []
     try:
-        for event in response["body"]:
-            raw_bytes = event.get("chunk", {}).get("bytes")
-            if raw_bytes is None:
-                continue
-            text = _parse_stream_event(raw_bytes)
-            if text:
-                full_text_parts.append(text)
-                yield text
+        try:
+            for event in response["body"]:
+                raw_bytes = event.get("chunk", {}).get("bytes")
+                if raw_bytes is None:
+                    continue
+                text = _parse_stream_event(raw_bytes)
+                if text:
+                    full_text_parts.append(text)
+                    yield text
+        except (BotoCoreError, ClientError) as exc:
+            logger.warning("Bedrock response stream failed mid-iteration: %s", exc)
+            raise HTTPException(
+                status_code=503, detail="The mentor is temporarily unavailable"
+            ) from exc
     finally:
         # Persist whatever was assembled so far even if the stream raised
         # mid-iteration (Bedrock error, client disconnect, etc.) — we never

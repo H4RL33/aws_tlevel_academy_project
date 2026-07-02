@@ -9,6 +9,14 @@
       query params ("?snippet=3").
     - activeHref (string): href matched === against link.href to determine the active link.
     - width (string): CSS width of the PageCard. Defaults to '288px'.
+    - padding (string): CSS padding forwarded to the underlying PageCard. Defaults to
+      '1.5rem 1rem', which combines with SideHeader's :first-child top margin (0.5rem) to
+      reach a 2rem top inset — matching the 2rem default padding of a sibling `main`
+      PageCard (e.g. AlbumSidebar next to /learn/[id]'s Album/Snippet panel, or the
+      settings Sidebar next to /settings' `main`). Callers whose sections have no `title`
+      (no SideHeader is rendered, e.g. NavSidebar) and sit beside a differently-padded
+      first panel should override this to match that panel's own top padding instead —
+      see NavSidebar.svelte.
     - ariaLabel (string): accessible label for the <nav> element.
 -->
 <script lang="ts" context="module">
@@ -32,11 +40,12 @@
   export let sections: SidebarSection[] = [];
   export let activeHref: string = '';
   export let width: string = '288px';
+  export let padding: string = '1.5rem 1rem';
   export let ariaLabel: string = 'Page navigation';
 </script>
 
 <div class="sidebar-sticky">
-  <PageCard as="aside" {width} padding="1.5rem 1rem" overflowY="auto">
+  <PageCard as="aside" {width} {padding} overflowY="auto">
     <nav class="sidebar-nav" aria-label={ariaLabel}>
       {#each sections as section}
         {#if section.title}

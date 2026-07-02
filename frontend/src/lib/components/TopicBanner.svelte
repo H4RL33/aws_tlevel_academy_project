@@ -173,7 +173,7 @@
   h3 {
     margin: 0;
     color: #232f3e;
-    font-size: 1.05rem;
+    font-size: var(--font-size-h4);
     font-weight: 700;
     font-family: 'Ubuntu', sans-serif;
     white-space: nowrap;
@@ -184,7 +184,7 @@
   p {
     margin: 0;
     color: #5a6472;
-    font-size: 0.85rem;
+    font-size: var(--font-size-body-secondary);
     font-family: 'Ubuntu', sans-serif;
     display: -webkit-box;
     -webkit-line-clamp: 2;
