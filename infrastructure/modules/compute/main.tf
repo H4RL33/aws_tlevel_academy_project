@@ -50,7 +50,7 @@ resource "aws_iam_role_policy" "ecs_task_bedrock" {
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
-      Action = ["bedrock:InvokeModel"]
+      Action = ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"]
       Resource = [
         "arn:aws:bedrock:${var.aws_region}::foundation-model/${var.bedrock_embedding_model_id}",
         "arn:aws:bedrock:${var.aws_region}::foundation-model/${var.bedrock_generation_model_id}",
