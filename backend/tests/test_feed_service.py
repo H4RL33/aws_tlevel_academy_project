@@ -37,12 +37,8 @@ async def test_get_feed_returns_content_for_users_interests_ordered_newest_first
     other_topic = await _make_topic(db_session, slug="cyber")
     db_session.add(UserTopicInterest(user_id=user.id, topic_id=interested_topic.id))
 
-    older = Content(
-        title="Older", content_type=ContentType.article, topic_id=interested_topic.id
-    )
-    newer = Content(
-        title="Newer", content_type=ContentType.article, topic_id=interested_topic.id
-    )
+    older = Content(title="Older", content_type=ContentType.article, topic_id=interested_topic.id)
+    newer = Content(title="Newer", content_type=ContentType.article, topic_id=interested_topic.id)
     unrelated = Content(
         title="Unrelated", content_type=ContentType.article, topic_id=other_topic.id
     )
@@ -75,12 +71,8 @@ async def test_get_progress_returns_only_in_progress_items_newest_first(
     finished = Content(title="Finished", content_type=ContentType.article, topic_id=topic.id)
     db_session.add_all([in_progress, finished])
     await db_session.flush()
-    db_session.add(
-        UserContentProgress(user_id=user.id, content_id=in_progress.id, progress_pct=40)
-    )
-    db_session.add(
-        UserContentProgress(user_id=user.id, content_id=finished.id, progress_pct=100)
-    )
+    db_session.add(UserContentProgress(user_id=user.id, content_id=in_progress.id, progress_pct=40))
+    db_session.add(UserContentProgress(user_id=user.id, content_id=finished.id, progress_pct=100))
     await db_session.commit()
 
     result = await feed_service.get_progress(db_session, user)
