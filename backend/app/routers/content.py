@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.dependencies.auth import get_current_user_optional
+from app.models.user import User
 from app.schemas.content import ContentDetailResponse, ContentListResponse
 from app.services import content_service
 
@@ -26,9 +28,10 @@ async def list_content(
 )
 async def get_content(
     content_id: int,
+    current_user: User | None = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
 ) -> ContentDetailResponse:
-    return await content_service.get_content(db, content_id)
+    return await content_service.get_content(db, content_id, current_user)
 
 
 @router.get(

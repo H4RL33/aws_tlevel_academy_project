@@ -3,7 +3,9 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import Content, ContentTag, ContentType, Tag
+from app.models.progress import UserContentProgress
 from app.models.topic import Topic
+from app.models.user import User
 from app.services import content_service
 
 
@@ -94,3 +96,83 @@ async def test_get_presigned_url_calls_boto3_generate_presigned_url(monkeypatch)
     assert captured["operation"] == "get_object"
     assert captured["params"]["Key"] == "some-key"
     assert captured["expires_in"] == 120
+
+
+async def test_get_content_returns_is_completed_false_when_no_progress_row(
+    db_session: AsyncSession, current_user: User
+) -> None:
+    topic = await _make_topic(db_session)
+    content = Content(
+        title="Intro",
+        body="Body",
+        content_type=ContentType.article,
+        topic_id=topic.id,
+    )
+    db_session.add(content)
+    await db_session.commit()
+
+    result = await content_service.get_content(db_session, content.id, user=current_user)
+
+    assert result.is_completed is False
+
+
+async def test_get_content_returns_is_completed_false_when_progress_incomplete(
+    db_session: AsyncSession, current_user: User
+) -> None:
+    topic = await _make_topic(db_session)
+    content = Content(
+        title="Intro",
+        body="Body",
+        content_type=ContentType.article,
+        topic_id=topic.id,
+    )
+    db_session.add(content)
+    await db_session.flush()
+    db_session.add(
+        UserContentProgress(user_id=current_user.id, content_id=content.id, progress_pct=40)
+    )
+    await db_session.commit()
+
+    result = await content_service.get_content(db_session, content.id, user=current_user)
+
+    assert result.is_completed is False
+
+
+async def test_get_content_returns_is_completed_true_when_progress_100(
+    db_session: AsyncSession, current_user: User
+) -> None:
+    topic = await _make_topic(db_session)
+    content = Content(
+        title="Intro",
+        body="Body",
+        content_type=ContentType.article,
+        topic_id=topic.id,
+    )
+    db_session.add(content)
+    await db_session.flush()
+    db_session.add(
+        UserContentProgress(user_id=current_user.id, content_id=content.id, progress_pct=100)
+    )
+    await db_session.commit()
+
+    result = await content_service.get_content(db_session, content.id, user=current_user)
+
+    assert result.is_completed is True
+
+
+async def test_get_content_returns_is_completed_false_for_anonymous_user(
+    db_session: AsyncSession,
+) -> None:
+    topic = await _make_topic(db_session)
+    content = Content(
+        title="Intro",
+        body="Body",
+        content_type=ContentType.article,
+        topic_id=topic.id,
+    )
+    db_session.add(content)
+    await db_session.commit()
+
+    result = await content_service.get_content(db_session, content.id)
+
+    assert result.is_completed is False
