@@ -2,8 +2,10 @@
   import { page } from '$app/stores';
   import AlbumSidebar from '$lib/components/AlbumSidebar.svelte';
   import PageCard from '$lib/components/PageCard.svelte';
+  import Button from '$lib/components/Button.svelte';
   import { getAlbumDetail } from '$lib/api/albums';
   import { getContent } from '$lib/api/content';
+  import { updateProgress } from '$lib/api/progress';
   import type { AlbumDetailResponse, ContentDetailResponse } from '$lib/api/types';
   import { saveSnippet, unsaveSnippet } from '$lib/api/library';
   import { savedSnippetIds } from '$lib/stores/savedSnippets';
@@ -16,6 +18,9 @@
   let snippet: ContentDetailResponse | null = null;
   let snippetLoading = false;
   let snippetError: string | null = null;
+  let snippetRead = false;
+  let markingRead = false;
+  let markReadError: string | null = null;
 
   $: albumId = Number($page.params.id);
   $: snippetIdParam = $page.url.searchParams.get('snippet');
@@ -55,6 +60,20 @@
     }
   }
 
+  async function markSnippetRead() {
+    if (!snippet || snippetRead) return;
+    markingRead = true;
+    markReadError = null;
+    try {
+      await updateProgress(snippet.id, 100);
+      snippetRead = true;
+    } catch {
+      markReadError = "Couldn't save your progress — please try again.";
+    } finally {
+      markingRead = false;
+    }
+  }
+
   async function loadSnippet(id: number | null) {
     if (id === null) {
       snippet = null;
@@ -65,6 +84,8 @@
     snippetError = null;
     try {
       snippet = await getContent(id);
+      snippetRead = snippet.is_completed;
+      markReadError = null;
     } catch {
       snippetError = 'Could not load this Snippet right now. Please try again later.';
     } finally {
@@ -132,6 +153,16 @@
           {/if}
         </div>
         <p>{snippet.body}</p>
+        {#if $currentUser}
+          <div class="mark-read-row">
+            <Button variant="primary" disabled={snippetRead || markingRead} on:click={markSnippetRead}>
+              {snippetRead ? '✓ Read' : markingRead ? 'Saving…' : 'Mark as read (+10 XP)'}
+            </Button>
+            {#if markReadError}
+              <span class="mark-read-error">{markReadError}</span>
+            {/if}
+          </div>
+        {/if}
       {/if}
     </PageCard>
   </div>
@@ -183,6 +214,18 @@
   .snippet-header h1 {
     margin: 0;
     flex: 1;
+  }
+
+  .mark-read-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .mark-read-error {
+    font-size: var(--font-size-body-secondary);
+    color: #ef4444;
   }
 
   .save-btn {
