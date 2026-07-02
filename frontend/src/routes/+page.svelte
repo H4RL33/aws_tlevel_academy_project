@@ -37,7 +37,7 @@
   // inside onMount would silently skip these fetches in that case.
   $: if ($currentUser && !authedDataFetched) {
     authedDataFetched = true;
-    Promise.allSettled([getLibrary(), getStats(), apiFetch<unknown[]>('/feed/')]).then(
+    Promise.allSettled([getLibrary(), getStats(), apiFetch<unknown[]>('/feed')]).then(
       ([libResult, statsResult, feedResult]) => {
         if (libResult.status === 'fulfilled') {
           enrolledAlbumIds.set(new Set(libResult.value.enrolled_albums.map((a) => a.id)));
