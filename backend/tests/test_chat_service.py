@@ -54,9 +54,7 @@ async def test_list_sessions_returns_only_current_users_sessions_newest_first(
     assert [s.title for s in sessions] == ["Second", "First"]
 
 
-async def test_rename_session_updates_title(
-    db_session: AsyncSession, current_user: User
-) -> None:
+async def test_rename_session_updates_title(db_session: AsyncSession, current_user: User) -> None:
     from app.services.chat_service import create_session, rename_session
 
     session = await create_session(db_session, current_user)
@@ -99,8 +97,10 @@ async def test_delete_session_removes_session_and_messages(
         await db_session.execute(select(ChatSession).where(ChatSession.id == session.id))
     ).scalar_one_or_none()
     remaining_messages = (
-        await db_session.execute(select(ChatMessage).where(ChatMessage.session_id == session.id))
-    ).scalars().all()
+        (await db_session.execute(select(ChatMessage).where(ChatMessage.session_id == session.id)))
+        .scalars()
+        .all()
+    )
 
     assert remaining_sessions is None
     assert remaining_messages == []

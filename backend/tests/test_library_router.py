@@ -73,9 +73,7 @@ async def test_rename_chat_session(authenticated_client: AsyncClient) -> None:
 
 
 async def test_rename_chat_session_404_for_nonexistent(authenticated_client: AsyncClient) -> None:
-    resp = await authenticated_client.patch(
-        "/library/chats/999999", json={"title": "Renamed chat"}
-    )
+    resp = await authenticated_client.patch("/library/chats/999999", json={"title": "Renamed chat"})
     assert resp.status_code == 404
 
 
