@@ -35,28 +35,48 @@ unread Snippet in an enrolled Album is what completes it.
 
 ## Backend change
 
+**Correction from the initial design:** the Snippet reader
+(`learn/[id]/+page.svelte`) calls `getContent()` → `GET /content/{id}` →
+`content_service.get_content`, **not** `GET /snippets/{id}` →
+`snippet_service.get_snippet`. The two are separate, parallel code paths
+(`snippet_service.get_snippet` backs the save/unsave-only `/snippets/{id}`
+route; `content_service.get_content` backs the public, no-required-auth
+`/content/{id}` route the reader actually uses). The `is_completed` field
+must be added to the path the reader actually hits, so this design targets
+`content_service.get_content` instead.
+
 `ContentDetailResponse` (`backend/app/schemas/content.py`) gains:
 
 ```python
 is_completed: bool = False
 ```
 
-`snippet_service.get_snippet` (`backend/app/services/snippet_service.py`)
-computes it the same way it already computes `is_saved`: look up the
-`UserContentProgress` row for `(user.id, content_id)` when `user is not
-None`, and set `is_completed = row is not None and row.progress_pct == 100`.
+`backend/app/routers/content.py`'s `GET /{content_id}` route gains an
+optional-auth dependency, mirroring how `snippets.py`'s `GET /{content_id}`
+already does it:
+
+```python
+current_user: User | None = Depends(get_current_user_optional)
+```
+
+(`get_current_user_optional` calls `get_current_user` as a plain function
+rather than as a nested `Depends`, so it never 401s and doesn't trip the
+existing `test_no_content_route_depends_on_get_current_user` guard test —
+the route stays public.)
+
+`content_service.get_content` gains a `user: User | None = None` parameter
+and computes `is_completed` the same way `snippet_service.get_snippet`
+already computes `is_saved`: look up the `UserContentProgress` row for
+`(user.id, content_id)` when `user is not None`, and set
+`is_completed = row is not None and row.progress_pct == 100`.
 
 ## Frontend changes
 
 ### `frontend/src/lib/api/progress.ts`
 
-Replace the stubs with real calls:
+Implement `updateProgress` only:
 
 ```ts
-export async function getProgress(): Promise<ProgressResponse[]> {
-  return apiFetch<ProgressResponse[]>('/progress');
-}
-
 export async function updateProgress(contentId: number, progressPct: number): Promise<void> {
   await apiFetch(`/progress/${contentId}`, {
     method: 'POST',
@@ -64,6 +84,10 @@ export async function updateProgress(contentId: number, progressPct: number): Pr
   });
 }
 ```
+
+`getProgress` stays a stub. It backs the "continue reading" widget, which
+this design doesn't build (nothing consumes it) — implementing it now would
+be dead code.
 
 ### `frontend/src/lib/api/types.ts`
 
@@ -92,10 +116,13 @@ users.
 
 ## Testing
 
-- Backend: extend `snippet_service`/`content` router tests to cover
+- Backend: extend `test_content_service.py`/`test_content.py` to cover
   `is_completed` in both states (no progress row, and a `progress_pct == 100`
-  row) — follow the existing `is_saved` test pattern.
+  row) — follow the existing `is_saved` test pattern in
+  `test_snippet_service.py`.
 - Frontend: unit tests for `progress.ts` (`getProgress`/`updateProgress` hit
-  the right endpoints/payloads), and a test for the Snippet reader's mark-as-read
-  button (renders unread/read state correctly, calls `updateProgress`, flips
-  state on success, stays clickable on failure).
+  the right endpoints/payloads), matching the existing `*.test.ts` pattern
+  used for other `lib/api/*.ts` modules. No `+page.svelte` route currently
+  has automated tests in this codebase (only `lib/components` and `lib/api`
+  do), so the mark-as-read button in `learn/[id]/+page.svelte` is verified
+  manually in the browser instead of via a new route-test pattern.
